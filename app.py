@@ -15,6 +15,12 @@ SEND_HISTORY = "send_history.json"
 if not os.path.exists(SMS_FOLDER):
     os.makedirs(SMS_FOLDER)
 
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+    
+
 # Utility: Save and load JSON safely
 def save_json(fname, data):
     with open(fname, 'w', encoding='utf-8') as f:
