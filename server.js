@@ -1,44 +1,35 @@
-const express = require('express');
-const fs = require('fs-extra');
-const path = require('path');
-const cors = require('cors');
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const bodyParser = require("body-parser");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const logsPath = path.join(__dirname, 'sms_logs.json');
+app.use(bodyParser.json());
+app.use(express.static("public")); // For index.html
 
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Store SMS: GET /api/sms?sender=xxx&msg=xxx
-app.get('/api/sms', async (req, res) => {
-    const sender = req.query.sender;
-    const msg = req.query.msg;
-    const time = new Date().toISOString();
-
-    if (!sender || !msg) return res.status(400).send("Missing params");
-
-    const newEntry = { sender, msg, time };
-
-    let logs = [];
-    if (await fs.pathExists(logsPath)) {
-        logs = await fs.readJSON(logsPath);
+app.post("/upload-sms", (req, res) => {
+    const smsData = req.body;
+    if (!Array.isArray(smsData)) {
+        return res.status(400).send("Invalid data");
     }
 
-    logs.unshift(newEntry); // Newest on top
-    await fs.writeJSON(logsPath, logs, { spaces: 2 });
-
-    res.send("OK");
+    fs.writeFileSync("sms_backup.json", JSON.stringify(smsData, null, 2));
+    console.log(`📩 Received ${smsData.length} SMS`);
+    res.send("✅ SMS Saved");
 });
 
-// Show all logs: GET /api/logs
-app.get('/api/logs', async (req, res) => {
-    if (!await fs.pathExists(logsPath)) return res.json([]);
-    const logs = await fs.readJSON(logsPath);
-    res.json(logs);
+app.get("/api/sms", (req, res) => {
+    if (fs.existsSync("sms_backup.json")) {
+        const data = fs.readFileSync("sms_backup.json", "utf8");
+        res.setHeader("Content-Type", "application/json");
+        res.send(data);
+    } else {
+        res.status(404).send("No SMS data found.");
+    }
 });
 
 app.listen(PORT, () => {
-    console.log(`SMS Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
