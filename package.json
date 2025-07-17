@@ -1,5 +1,5 @@
 {
-  "name": "safe-sms-server",
+  "name": "sms-remote-app",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -7,7 +7,6 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "fs-extra": "^11.1.1",
-    "cors": "^2.8.5"
+    "body-parser": "^1.20.2"
   }
 }
