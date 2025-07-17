@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My SMS Control Panel</title>
+<style>
+body { font-family: Arial, sans-serif; padding:30px; background:#f8f8fa; }
+h2, h3 { color: #374151; }
+textarea { width:90%; height:70px; }
+#console { margin-top: 20px; color: darkred;}
+ul { max-height: 350px; overflow:auto; background:white; border:1px solid #eee; padding:10px;}
+li { border-bottom:1px solid #f1f1f1; padding:6px 3px;}
+</style>
+</head>
+<body>
+<h2>Your SMS List</h2>
+<ul id="smsList"><li>Loading...</li></ul>
+
+<h3>Send An SMS (via your Phone)</h3>
+<form id="smsform">
+To (number): <input type="text" id="to" required><br>
+Message:<br>
+<textarea id="txt" required></textarea><br>
+<button type="submit">Send!</button>
+</form>
+<div id="console"></div>
+<script>
+function fetchSMS() {
+    fetch('/api/sms').then(res => res.json()).then(data => {
+        let ul=document.getElementById('smsList'); 
+        ul.innerHTML='';
+        data.forEach(sms=>{
+            ul.innerHTML+=`<li><b>From:</b> ${sms.address}<br><b>Text:</b> ${sms.body}<br><small>${sms.date}</small></li>`;
+        });
+    });
+}
+fetchSMS();
+setInterval(fetchSMS, 5000);
+
+document.getElementById('smsform').onsubmit=function(e){
+    e.preventDefault();
+    let to=document.getElementById('to').value;
+    let txt=document.getElementById('txt').value;
+    fetch('/api/send_sms', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({address:to, body:txt})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        document.getElementById('console').textContent=data.success?"Message queued to Phone!":"Error!";
+        document.getElementById('smsform').reset();
+    });
+}
+</script>
+</body>
+</html>
