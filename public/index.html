@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📡 SMS Logs - SafeSMS</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 2rem; }
+    h1 { color: #0ff; }
+    .log { margin-bottom: 1.5rem; border-bottom: 1px dashed #444; padding-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>📥 Incoming SMS Logs</h1>
+  <div id="logs">Loading...</div>
+
+  <script>
+    async function fetchLogs() {
+      const res = await fetch('/api/logs');
+      const logs = await res.json();
+      const container = document.getElementById('logs');
+      container.innerHTML = '';
+
+      logs.forEach(log => {
+        const div = document.createElement('div');
+        div.classList.add('log');
+        div.innerHTML = `<strong>${log.time}</strong><br>
+                         <b>From:</b> ${log.sender}<br>
+                         <b>Message:</b><br>${log.msg}`;
+        container.appendChild(div);
+      });
+    }
+
+    fetchLogs();
+    setInterval(fetchLogs, 10000); // Auto-refresh every 10 sec
+  </script>
+</body>
+</html>
