@@ -2,56 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>My SMS Control Panel</title>
+<title>Phone SMS Remote Panel</title>
 <style>
-body { font-family: Arial, sans-serif; padding:30px; background:#f8f8fa; }
-h2, h3 { color: #374151; }
-textarea { width:90%; height:70px; }
-#console { margin-top: 20px; color: darkred;}
-ul { max-height: 350px; overflow:auto; background:white; border:1px solid #eee; padding:10px;}
-li { border-bottom:1px solid #f1f1f1; padding:6px 3px;}
+body{font-family:Arial;padding:20px;background:#f0f2f4;}
+h2,h3{color:#222}
+button{margin:4px 0;}
+#smsList{ max-height:260px; overflow:auto; background:#fff; border:1px solid #ddd; padding:10px;}
+ul{padding:0;}
+li{border-bottom:1px solid #efefef;padding:8px 4px;}
 </style>
 </head>
 <body>
-<h2>Your SMS List</h2>
-<ul id="smsList"><li>Loading...</li></ul>
-
-<h3>Send An SMS (via your Phone)</h3>
-<form id="smsform">
-To (number): <input type="text" id="to" required><br>
-Message:<br>
-<textarea id="txt" required></textarea><br>
-<button type="submit">Send!</button>
+<h2>SMS Remote Commands</h2>
+<div>
+    <button onclick="setCmd('see_all')">See All SMS</button>
+    <button onclick="setCmd('see_7days')">See Last 7 Days</button>
+    <button onclick="setCmd('see_today')">See Today</button>
+    <button onclick="setCmd('see_yesterday')">See Yesterday</button>
+    <button onclick="setCmd('see_lasthour')">See Last Hour</button>
+</div>
+<hr>
+<h3>Send SMS (via Phone)</h3>
+<form id="sendsms" onsubmit="return sendSmsForm();">
+To: <input id="smsno" required> <br>
+Text:<br>
+<textarea id="smstext" required></textarea><br>
+<button type="submit">Send SMS</button>
 </form>
 <div id="console"></div>
-<script>
-function fetchSMS() {
-    fetch('/api/sms').then(res => res.json()).then(data => {
-        let ul=document.getElementById('smsList'); 
-        ul.innerHTML='';
-        data.forEach(sms=>{
-            ul.innerHTML+=`<li><b>From:</b> ${sms.address}<br><b>Text:</b> ${sms.body}<br><small>${sms.date}</small></li>`;
-        });
-    });
-}
-fetchSMS();
-setInterval(fetchSMS, 5000);
+<hr>
+<h3>Last Result</h3>
+<select id="smsType" onchange="refreshSMS()">
+    <option value="see_all">All</option>
+    <option value="see_7days">Last 7 Days</option>
+    <option value="see_today">Today</option>
+    <option value="see_yesterday">Yesterday</option>
+    <option value="see_lasthour">Last Hour</option>
+</select>
+<ul id="smsList"><li>Click command and result will show here...</li></ul>
 
-document.getElementById('smsform').onsubmit=function(e){
-    e.preventDefault();
-    let to=document.getElementById('to').value;
-    let txt=document.getElementById('txt').value;
-    fetch('/api/send_sms', {
+<script>
+function setCmd(cmd){
+    fetch('/api/set_command',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({address:to, body:txt})
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        document.getElementById('console').textContent=data.success?"Message queued to Phone!":"Error!";
-        document.getElementById('smsform').reset();
+        body:JSON.stringify({"action":cmd})
+    }).then(r=>r.json()).then(z=>{
+        document.getElementById('console').textContent="Command \""+cmd+"\" sent. Wait for result!";
+        setTimeout(refreshSMS, 12000);
     });
 }
+function sendSmsForm(){
+    let number = document.getElementById('smsno').value;
+    let body = document.getElementById('smstext').value;
+    fetch('/api/send_sms',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({"number":number,"body":body})
+    }).then(r=>r.json()).then(z=>{
+        document.getElementById('console').textContent="Send SMS command sent.";
+    });
+    return false;
+}
+function refreshSMS(){
+    let val = document.getElementById('smsType').value;
+    fetch('/api/get_last_sms/'+val)
+        .then(r=>r.json())
+        .then(data=>{
+            let ul=document.getElementById('smsList');ul.innerHTML='';
+            if(!data.length){ul.innerHTML='<li>No SMS file yet for "'+val+'"</li>';return;}
+            data.forEach(sms=>{
+                ul.innerHTML+=`<li><b>Name:</b> ${sms.name}<br>
+                <b>Number:</b> ${sms.number}<br>
+                <b>Date:</b> ${sms.date}<br>
+                <b>Message:</b> ${sms.msg}</li>`;
+            });
+        });
+}
+refreshSMS();
+setInterval(refreshSMS, 20000);
 </script>
 </body>
 </html>
