@@ -1,1 +1,3 @@
-
+Flask==2.3.2  # Flask framework
+psycopg2-binary==2.9.9 # PostgreSQL database driver
+gunicorn==21.2.0
