@@ -1,77 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My SMS Control Panel</title>
-    <style>
-        /* Basic CSS for a clean look */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #eef1f5; color: #333; line-height: 1.6; }
-        .container { max-width: 850px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 25px; border-bottom: 2px solid #3498db; padding-bottom: 15px; }
-        h2 { color: #34495e; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
-
-        /* Send SMS Form Section */
-        .info-message { background-color: #e8f0fe; border-left: 5px solid #3498db; padding: 15px 20px; margin-bottom: 25px; border-radius: 8px; font-size: 0.95em; color: #2c3e50; }
-        .info-message strong { color: #2980b9; }
-        form { background-color: #f9f9f9; padding: 25px; border-radius: 10px; border: 1px solid #eee; margin-bottom: 30px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
-        input[type="text"], textarea { width: calc(100% - 22px); padding: 12px; margin-bottom: 18px; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
-        textarea { resize: vertical; min-height: 80px; }
-        input[type="submit"] { background-color: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 1.05em; transition: background-color 0.3s ease; }
-        input[type="submit"]:hover { background-color: #2980b9; }
-
-        /* SMS Messages Display Section */
-        .sms-container { border: 1px solid #e0e0e0; padding: 20px; border-radius: 10px; background-color: #fcfcfc; }
-        .sms-item { background-color: #f0f4f7; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-        .sms-item.received { background-color: #e6ffe6; border-left: 6px solid #28a745; } /* Green for received */
-        .sms-item.sent { background-color: #e0f2f7; border-right: 6px solid #007bff; text-align: right; align-items: flex-end; } /* Blue for sent */
-        .sms-item strong { display: block; margin-bottom: 8px; font-size: 1.1em; color: #2c3e50; }
-        .sms-item p { margin: 0 0 8px 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.95em; } /* Preserve newlines */
-        .sms-item span { font-size: 0.8em; color: #7f8c8d; display: block; }
-        .sms-item.sent span { text-align: right; }
-        
-        /* No messages found */
-        .no-messages { text-align: center; padding: 30px; color: #777; font-style: italic; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📱 Remote SMS Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 20px; line-height: 1.6; }
+    .container { max-width: 900px; margin: 20px auto; background-color: #2a2a4a; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    h1 { color: #00ffc8; text-align: center; margin-bottom: 25px; border-bottom: 2px solid #00ffc8; padding-bottom: 15px; }
+    p { text-align: center; color: #ccc; margin-bottom: 30px; }
+    .action-buttons { text-align: center; margin-bottom: 30px; }
+    .action-buttons button {
+      background-color: #007bff;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background-color 0.3s ease;
+      margin: 0 10px;
+    }
+    .action-buttons button:hover {
+      background-color: #0056b3;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #333355; border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid #444477; padding: 12px; text-align: left; }
+    th { background-color: #3f3f6f; color: #aaffea; }
+    tr:nth-child(even) { background-color: #2f2f5f; }
+    tr:hover { background-color: #4a4a7a; }
+    .no-sms { text-align: center; padding: 20px; color: #aaa; font-style: italic; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>My SMS Control Panel</h1>
+  <div class="container">
+    <h1>📲 SMS Viewer (Remote)</h1>
+    <p>Below is your latest synced SMS data from phone 📤</p>
 
-        <div class="info-message">
-            <h2>Send SMS (Feature to be implemented in App)</h2>
-            <p>
-                <strong>Note:</strong> Direct SMS sending from this website is not yet functional.
-                It requires your Android app to periodically poll this server for "send" commands
-                or utilize push notifications (like Firebase Cloud Messaging) to trigger SMS sending.
-                The current app primarily focuses on uploading received messages.
-                The form below is a placeholder for future implementation.
-            </p>
-        </div>
-        
-        <form action="#" method="POST">
-            <label for="to_number">To Number:</label>
-            <input type="text" id="to_number" name="to_number" placeholder="e.g., +919876543210" required><br>
-            <label for="message_text">Message:</label>
-            <textarea id="message_text" name="message_text" rows="4" placeholder="Enter your message here" required></textarea><br>
-            <input type="submit" value="Send SMS (Requires App Integration)">
-        </form>
-
-        <h2>All Your SMS Messages</h2>
-        <div class="sms-container">
-            <% if (sms_messages && sms_messages.length > 0) { %>
-                <% sms_messages.forEach(function(sms) { %>
-                    <div class="sms-item <%= sms.type %>">
-                        <strong><%= sms.type.charAt(0).toUpperCase() + sms.type.slice(1) %>: <%= sms.sender %></strong>
-                        <p><%= sms.message.replace(/\n/g, '<br>') %></p>
-                        <span><%= sms.timestamp %></span>
-                    </div>
-                <% }); %>
-            <% } else { %>
-                <p class="no-messages">No SMS messages yet. Send an SMS from your registered phone to see it here!</p>
-            <% } %>
-        </div>
+    <div class="action-buttons">
+      <button onclick="fetchSMS()">Refresh SMS</button>
+      <button onclick="downloadSMS()">Download All SMS (JSON)</button>
     </div>
+
+    <table id="smsTable">
+      <thead>
+        <tr>
+          <th>📨 From</th>
+          <th>💬 Message</th>
+          <th>⏰ Date</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (sms_messages && sms_messages.length > 0) { %>
+            <% sms_messages.forEach(function(sms) { %>
+                <tr>
+                    <td><%= sms.sender %></td>
+                    <td><%= sms.message.replace(/\n/g, '<br>') %></td>
+                    <td><%= sms.formattedDate %></td>
+                    <td><%= sms.type %></td>
+                </tr>
+            <% }); %>
+        <% } else { %>
+            <tr>
+                <td colspan="4" class="no-sms">No SMS data found. Send an SMS from your registered phone.</td>
+            </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Function to download SMS data as a JSON file
+    async function downloadSMS() {
+      try {
+        const res = await fetch("/api/sms"); // Get all SMS from the server
+        if (!res.ok) {
+          alert("Failed to fetch SMS for download.");
+          return;
+        }
+        const smsData = await res.json();
+
+        // Create a Blob from the JSON data
+        const blob = new Blob([JSON.stringify(smsData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        // Create a temporary link element to trigger download
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `sms_backup_${new Date().toISOString().slice(0,10)}.json`; // Dynamic filename
+        document.body.appendChild(a);
+        a.click(); // Programmatically click the link
+        document.body.removeChild(a); // Clean up
+        URL.revokeObjectURL(url); // Release the object URL
+      } catch (error) {
+        console.error("Error during SMS download:", error);
+        alert("An error occurred during download.");
+      }
+    }
+
+    // Function to refresh SMS data on the table (fetches from memory on server)
+    async function fetchSMS() {
+        // Since we are passing sms_messages directly via EJS,
+        // this function primarily serves as a placeholder or for dynamic refresh
+        // if we were fetching via API after initial load.
+        // For this current setup, a page refresh handles it.
+        // If you want dynamic refresh without full page reload, you'd need
+        // to re-fetch from /api/sms and update the table tbody here.
+        window.location.reload(); // Simple refresh for now.
+    }
+  </script>
 </body>
 </html>
