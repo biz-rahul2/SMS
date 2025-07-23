@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Occurred</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8d7da; color: #721c24; line-height: 1.6; }
+        .error-container { max-width: 600px; margin: 50px auto; padding: 30px; border: 1px solid #f5c6cb; border-radius: 12px; background-color: #fdfdfe; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #dc3545; margin-bottom: 20px; }
+        p { margin-bottom: 15px; }
+        a { color: #007bff; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>An Error Occurred</h1>
+        <p>Something went wrong while processing your request.</p>
+        <p><strong>Error Details:</strong></p>
+        <p>{{ error_message }}</p>
+        <p>Please try again later or contact support if the problem persists.</p>
+        <p><a href="/">Go back to Home</a></p>
+    </div>
+</body>
+</html>
