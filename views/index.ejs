@@ -60,17 +60,17 @@
 
         <h2>All Your SMS Messages</h2>
         <div class="sms-container">
-            {% if sms_messages %}
-                {% for sms in sms_messages %}
-                    <div class="sms-item {{ sms.type }}">
-                        <strong>{{ sms.type | capitalize }}: {{ sms.sender }}</strong>
-                        <p>{{ sms.message | replace('\n', '<br>') | safe }}</p>
-                        <span>{{ sms.timestamp }}</span>
+            <% if (sms_messages && sms_messages.length > 0) { %>
+                <% sms_messages.forEach(function(sms) { %>
+                    <div class="sms-item <%= sms.type %>">
+                        <strong><%= sms.type.charAt(0).toUpperCase() + sms.type.slice(1) %>: <%= sms.sender %></strong>
+                        <p><%= sms.message.replace(/\n/g, '<br>') %></p>
+                        <span><%= sms.timestamp %></span>
                     </div>
-                {% endfor %}
-            {% else %}
+                <% }); %>
+            <% } else { %>
                 <p class="no-messages">No SMS messages yet. Send an SMS from your registered phone to see it here!</p>
-            {% endif %}
+            <% } %>
         </div>
     </div>
 </body>
