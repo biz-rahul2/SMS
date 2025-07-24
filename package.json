@@ -1,14 +1,14 @@
 {
-  "name": "sms-remote-app",
+  "name": "sms-email-forwarder",
   "version": "1.0.0",
-  "description": "Node.js backend for SMS control app without database",
+  "description": "Node.js backend to forward SMS to email.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "ejs": "^3.1.10"
+    "nodemailer": "^6.9.14"
   },
   "engines": {
     "node": "18.x"
