@@ -2,60 +2,110 @@
 
 const express = require("express");
 const path = require("path");
-// body-parser अब Express 4.16.0+ में built-in है, इसलिए अलग से इसकी आवश्यकता नहीं
-// const bodyParser = require("body-parser");
+const nodemailer = require("nodemailer"); // Email भेजने के लिए
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Middleware ---
-// JSON body parsing ke liye (Android app se JSON data receive karne ke liye)
-app.use(express.json());
-// Static files (जैसे index.html) 'public' folder se serve karne ke liye
-// Ab hum EJS templates use karenge, isliye yeh line shayad zaruri na ho,
-// lekin agar aapki koi aur static file ho to yeh kaam aayegi.
-// app.use(express.static("public")); 
-
-// Views (templates) directory set karein
+app.use(express.json()); // JSON body parsing ke liye
 app.set('views', path.join(__dirname, 'views'));
-// Template engine set karein (ejs ka upyog HTML render karne ke liye)
 app.set('view engine', 'ejs');
+
+// --- Email Transporter Setup ---
+// Email भेजने के लिए SMTP सर्वर की डिटेल्स Render Environment Variables से मिलेंगी
+// Render पर ये Environment Variables सेट करना अनिवार्य है:
+// EMAIL_USER (जैसे आपका Gmail ईमेल पता)
+// EMAIL_PASS (आपके Gmail App Password या ईमेल पासवर्ड)
+// EMAIL_SERVICE (जैसे 'gmail', 'outlook', 'sendgrid' - अधिकतर cases mein 'gmail' chal jayega)
+const transporter = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || 'gmail', // Default to gmail
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 // --- Server ki memory mein SMS data store karne ke liye array ---
 // NOTE: Jab server restart hoga (Render par often hota hai), to yeh data reset ho jayega.
-// Yeh permanent storage nahi hai.
-let smsDataStore = []; 
+// Yeh permanent storage nahi hai. Isliye, data ko turant email karein.
+let smsDataBuffer = []; // Temp buffer for new SMS before sending email
+const EMAIL_BATCH_SIZE = 50; // Kitne SMS hone par email bhejna hai, ya ek baar mein kitne bhejne hain
+const EMAIL_SEND_INTERVAL = 30 * 1000; // 30 seconds (नया SMS आने के 30 सेकंड बाद email भेजें अगर कोई batch size नहीं है)
+
+let emailSendTimeout; // Email भेजने के लिए setTimeout handle
+
+// Function to send buffered SMS data to email
+async function sendBufferedSmsToEmail() {
+    if (smsDataBuffer.length === 0) {
+        return;
+    }
+
+    const recipientEmail = process.env.RECIPIENT_EMAIL; // उस ईमेल पते पर भेजें जहाँ आप SMS प्राप्त करना चाहते हैं
+    if (!recipientEmail) {
+        console.error("RECIPIENT_EMAIL environment variable is not set. Cannot send email.");
+        smsDataBuffer = []; // Clear buffer if no recipient
+        return;
+    }
+
+    const smsText = smsDataBuffer.map(sms =>
+        `Type: ${sms.type.toUpperCase()}\nFrom: ${sms.address}\nMessage: ${sms.body}\nDate: ${new Date(parseInt(sms.date)).toLocaleString()}\n---`
+    ).join('\n\n');
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: recipientEmail,
+        subject: `SMS Backup from Phone (${smsDataBuffer.length} messages)`,
+        text: smsText
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent successfully with ${smsDataBuffer.length} SMS.`);
+        smsDataBuffer = []; // Clear buffer after successful send
+    } catch (error) {
+        console.error("Error sending email:", error);
+        // If email fails, keep data in buffer to retry later
+    }
+}
 
 // --- API Endpoint for SMS Upload (Android App se) ---
+// Is endpoint par aapka Android app har naye SMS ko bhejeega.
 app.post("/upload-sms", (req, res) => {
-    // Android app se JSON data receive karenge
-    // Ensure app sends {"sender": "...", "message": "...", "timestamp": ..., "type": "..."}
-    const { sender, message, timestamp, type } = req.body;
+    const { sender, message, timestamp, type } = req.body; 
 
-    // Basic input validation
     if (!sender || !message || !timestamp || !type) {
-        return res.status(400).json({ status: "error", message: "Missing data. Required: sender, message, timestamp, type" });
+        return res.status(400).json({ status: "error", message: "Missing data." });
     }
 
     try {
-        // Timestamp ko milliseconds se JavaScript Date object mein convert karein
         const date = new Date(parseInt(timestamp));
-        if (isNaN(date.getTime())) { // Invalid date check
+        if (isNaN(date.getTime())) {
             return res.status(400).json({ status: "error", message: "Invalid timestamp format" });
         }
 
         const newSms = {
-            address: sender, // aapke app se 'sender' aa raha hai
+            address: sender,
             body: message,
-            date: timestamp, // Original timestamp (milliseconds) bhi save kar sakte hain
-            // Date object ka string version bhi save kar sakte hain agar display ke liye chahiye
+            date: timestamp,
             formattedDate: date.toLocaleString(),
-            type: type // 'received' ya 'sent'
+            type: type
         };
 
-        smsDataStore.push(newSms); // Data ko memory array mein add karein
-        console.log(`📩 Received ${smsDataStore.length} SMS. Latest from: ${sender}`);
-        res.status(200).json({ status: "success", message: "SMS received and stored in memory" });
+        smsDataBuffer.push(newSms); // नए SMS को बफर में जोड़ें
+        console.log(`📩 Received new SMS. Buffered: ${smsDataBuffer.length}`);
+
+        // अगर बैच साइज पूरा हो गया है या टाइमआउट चल रहा है, तो ईमेल भेजें
+        if (smsDataBuffer.length >= EMAIL_BATCH_SIZE) {
+            clearTimeout(emailSendTimeout); // अगर कोई पुराना टाइमआउट चल रहा है तो उसे हटा दें
+            sendBufferedSmsToEmail(); // तुरंत ईमेल भेजें
+        } else {
+            // अगर बैच साइज पूरा नहीं हुआ है, तो एक नया टाइमआउट सेट करें (या मौजूदा को रीसेट करें)
+            clearTimeout(emailSendTimeout);
+            emailSendTimeout = setTimeout(sendBufferedSmsToEmail, EMAIL_SEND_INTERVAL);
+        }
+
+        res.status(200).json({ status: "success", message: "SMS received." });
 
     } catch (err) {
         console.error("Error processing SMS upload:", err);
@@ -63,27 +113,53 @@ app.post("/upload-sms", (req, res) => {
     }
 });
 
-// --- API Endpoint to Get All SMS (for download) ---
-app.get("/api/sms", (req, res) => {
-    // `smsDataStore` se data return karein
-    res.setHeader("Content-Type", "application/json");
-    res.json(smsDataStore); // memory mein stored data bhejein
+// --- API Endpoint to Request All Stored SMS (for "Send All" button) ---
+// Jab app "Send All" button dabayega, to saare pending SMS yahan bhejega.
+// Is endpoint par SMS data JSON array mein receive hoga.
+app.post("/upload-all-sms", async (req, res) => {
+    const allSmsData = req.body; // Expecting an array of SMS objects
+    
+    if (!Array.isArray(allSmsData) || allSmsData.length === 0) {
+        return res.status(400).json({ status: "error", message: "No SMS data provided for batch upload." });
+    }
+
+    const recipientEmail = process.env.RECIPIENT_EMAIL;
+    if (!recipientEmail) {
+        console.error("RECIPIENT_EMAIL environment variable is not set. Cannot send email.");
+        return res.status(500).json({ status: "error", message: "Email recipient not configured on server." });
+    }
+
+    const smsText = allSmsData.map(sms =>
+        `Type: ${sms.type.toUpperCase() || 'UNKNOWN'}\nFrom: ${sms.sender || 'Unknown'}\nMessage: ${sms.body || 'No Message'}\nDate: ${new Date(parseInt(sms.timestamp)).toLocaleString() || 'Unknown'}\n---`
+    ).join('\n\n');
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: recipientEmail,
+        subject: `Batch SMS Backup from Phone (${allSmsData.length} messages)`,
+        text: smsText
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Batch email sent successfully with ${allSmsData.length} SMS.`);
+        res.status(200).json({ status: "success", message: `Batch of ${allSmsData.length} SMS sent to email.` });
+    } catch (error) {
+        console.error("Error sending batch email:", error);
+        res.status(500).json({ status: "error", message: `Error sending batch email: ${error.message}` });
+    }
 });
 
-// --- Web Interface to Display SMS (and provide download link) ---
-app.get(['/', '/sms'], (req, res) => {
-    try {
-        // 'index.ejs' template ko render karein aur memory mein stored messages pass karein
-        res.render('index', { sms_messages: smsDataStore });
-    } catch (err) {
-        console.error("Error rendering display page:", err);
-        // 'error.ejs' template ko render karein agar woh maujood hai
-        res.status(500).render('error', { error_message: `Could not load page: ${err.message}` });
-    }
+
+// --- Web Interface (Simple page to confirm server is running) ---
+app.get(['/', '/status'], (req, res) => {
+    // Ye sirf ek basic page hai yeh confirm karne ke liye ki server chal raha hai
+    res.send("<h1>SMS Forwarding Server is Running!</h1><p>Waiting for SMS from your Android app.</p>");
 });
 
 // --- Server Start ---
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`Access dashboard at: http://localhost:${PORT}/sms`);
+    console.log(`Waiting for SMS uploads from app...`);
 });
+
